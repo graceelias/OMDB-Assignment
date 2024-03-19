@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">OMDB-Assignment</string>
+    <string name="edit_text">Enter Movie Title</string>
+    <string name="button_text">Submit</string>
 </resources>
