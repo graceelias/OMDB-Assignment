@@ -3,18 +3,17 @@ package com.example.omdb_assignment
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.example.omdb_assignment.api.Movie
-import com.example.omdb_assignment.api.MovieResponse
-import com.example.omdb_assignment.api.OmdbApi
 import com.example.omdb_assignment.databinding.ActivityMainBinding
-import com.squareup.moshi.JsonAdapter
-import com.squareup.moshi.Moshi
+import com.squareup.picasso.Picasso
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.create
 
+private const val TAG = "PhotoGalleryFragment"
 class MainActivity : AppCompatActivity()
 {
     private lateinit var binding: ActivityMainBinding
@@ -26,44 +25,57 @@ class MainActivity : AppCompatActivity()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        /*
-        val retrofit: Retrofit = Retrofit.Builder()
-            .baseUrl("http://www.omdbapi.com/")
-            .addConverterFactory(MoshiConverterFactory.create())
-            .build()
-
-        val moshi: Moshi = Moshi.Builder().build()
-        val adapter: JsonAdapter<Movie> = moshi.adapter(Movie::class.java)
-        val movie = adapter.fromJson(moviesJson)
-
-         */
 
 
-        binding.button.setOnClickListener{
-            // make api call
-            lifecycleScope.launch {
-                val movies = MoshiFactory.fetchMovie(binding.editText.text.toString())
-
-                binding.title.setText(movies.movies[0].title)
-                binding.year.setText(movies.movies[0].year)
-                binding.poster.setImageResource(0)
+        binding.button.setOnClickListener {
+            val title = binding.userInputTitle.text.toString()
+            this.lifecycleScope.launch {
+                try {
+                    val response = MovieRepository.fetchMovie(title)
+                    Log.d(TAG, "Response received: $response")
+                    if (response.title.isNotBlank()) {
+                        loadMovieInfo(response)
+                    } else {
+                        movieNotFoundToast()
+                    }
+                } catch (ex: Exception) {
+                    Log.e(TAG, "Failed to fetch Movie", ex)
+                    movieNotFoundToast()
+                }
             }
         }
     }
 
-}
-
-object MoshiFactory
-{
-    private val omdbApi: OmdbApi
-    init {
-        val retrofit: Retrofit = Retrofit.Builder()
-            .baseUrl("http://www.omdbapi.com/")
-            .addConverterFactory(MoshiConverterFactory.create())
-            .build()
-        omdbApi = retrofit.create()
+    private fun loadMovieInfo(movieData : Movie) {
+        binding.year.text = movieData.year
+        binding.title.text = movieData.title
+        Picasso.get()
+            .load(movieData.poster)
+            .into(binding.poster)
     }
 
-    suspend fun fetchMovie(title: String): MovieResponse =
-        omdbApi.fetchMovie(title)
+    private fun movieNotFoundToast() {
+        val toast = Toast.makeText(this, "Movie not found", Toast.LENGTH_SHORT)
+        toast.show()
+    }
+
+}
+
+
+
+object MovieRepository {
+    private val omdbApi: OmdbApi
+
+    init {
+        val retrofit: Retrofit = Retrofit.Builder()
+            .baseUrl("https://www.omdbapi.com/")
+            .addConverterFactory(MoshiConverterFactory.create())
+            .build()
+
+        omdbApi = retrofit.create<OmdbApi>()
+
+    }
+
+    suspend fun fetchMovie(title: String): Movie =
+        omdbApi.fetchMovie(title = title)
 }
